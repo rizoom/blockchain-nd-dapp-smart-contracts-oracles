@@ -16,9 +16,9 @@ contract FlightSuretyData {
 
     mapping(bytes32 => FlightSuretyStruct.Flight) private flights;
 
-    uint8 public airlineCount;
+    uint256 public airlineCount;
     mapping(address => FlightSuretyStruct.Airline) private airlines;
-
+    mapping(address => address[]) private votesForAirlines;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -136,10 +136,12 @@ contract FlightSuretyData {
         string name
     )
     external
+    requireIsOperational
     isCallerAuthorized
     {
         FlightSuretyStruct.Airline memory airline = FlightSuretyStruct.Airline(name, false);
         airlines[airlineAddress] = airline;
+        airlineCount++;
     }
 
     function addFirstAirline
@@ -160,6 +162,7 @@ contract FlightSuretyData {
     function fundAirline(address airlineAddress)
     external
     payable
+    requireIsOperational
     isCallerAuthorized
     {
         FlightSuretyStruct.Airline storage airline = airlines[airlineAddress];
@@ -180,6 +183,22 @@ contract FlightSuretyData {
     returns (bool)
     {
         return airlines[airlineAddress].isFunded;
+    }
+
+    function getAirlineVotes(address airlineAddress)
+    external
+    view
+    returns (address[])
+    {
+        return votesForAirlines[airlineAddress];
+    }
+
+    function addAirlineVote(address airlineAddress, address votingAddress)
+    external
+    requireIsOperational
+    isCallerAuthorized
+    {
+        votesForAirlines[airlineAddress].push(votingAddress);
     }
 
     /**
@@ -258,7 +277,6 @@ contract FlightSuretyData {
     payable
     isCallerAuthorized
     {
-        airlineCount++;
         fund();
     }
 }

@@ -17,7 +17,7 @@ contract FlightSuretyApp {
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
 
-    // Flight status codees
+    // Flight status codes
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
     uint8 private constant STATUS_CODE_ON_TIME = 10;
     uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
@@ -26,7 +26,10 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
 
     // Airline funding fee
-    uint256 public constant AIRLINE_FUNDING_FEE = 10 ether;
+    uint256 private constant AIRLINE_FUNDING_FEE = 10 ether;
+
+    // Multiparty consensus
+    uint8 private MAX_AIRLINES_WITHOUT_CONSENSUS = 4;
 
     address private contractOwner;              // Account used to deploy contract
     FlightSuretyData private flightSuretyData;  // Data contract
@@ -119,10 +122,41 @@ contract FlightSuretyApp {
     external
     requireIsOperational
     requireFundedAirline
-    returns (bool success, uint256 votes)
+    returns (bool success)
     {
-        flightSuretyData.addAirline(airlineAddress, name);
-        return (success, 0);
+        require(flightSuretyData.isAirline(airlineAddress) == false, "Airline already registered");
+
+        uint256 airlineCount = flightSuretyData.airlineCount();
+        if (airlineCount < MAX_AIRLINES_WITHOUT_CONSENSUS) {
+            flightSuretyData.addAirline(airlineAddress, name);
+            success = true;
+        } else {
+            // Multiparty - Ensure no duplicate votes
+            address[] memory votes = flightSuretyData.getAirlineVotes(airlineAddress);
+            bool hasDuplicateVotes = false;
+            for (uint8 i = 0; i < votes.length; i++) {
+                if (votes[i] == msg.sender) {
+                    hasDuplicateVotes = true;
+                    break;
+                }
+            }
+            require(!hasDuplicateVotes, "Already voted for this airline");
+
+            // Multiparty - Add vote
+            flightSuretyData.addAirlineVote(airlineAddress, msg.sender);
+
+            // Multipary - handle consensus
+            uint256 totalVotes = votes.length.add(1);
+            // previous votes + new vote
+            bool hasConsensus = totalVotes.mul(2) >= airlineCount;
+            if (hasConsensus) {
+                flightSuretyData.addAirline(airlineAddress, name);
+                success = true;
+            }
+        }
+
+
+        return success;
     }
 
     function fundAirline(address airlineAddress)
@@ -130,7 +164,7 @@ contract FlightSuretyApp {
     payable
     requireAirline
     {
-        // Require funding
+        require(flightSuretyData.isAirlineFunded(airlineAddress) == false, "Airline already registered");
         require(msg.value >= AIRLINE_FUNDING_FEE, "At least 10 ethers are required to fund an airline");
 
         flightSuretyData.fundAirline.value(msg.value)(airlineAddress);
@@ -366,4 +400,13 @@ contract FlightSuretyData {
 
     function isAirlineFunded(address airlineAddress)
     external view returns (bool);
+
+    function airlineCount()
+    public returns (uint256);
+
+    function getAirlineVotes(address airlineAddress)
+    external view returns (address[]);
+
+    function addAirlineVote(address airlineAddress, address votingAddress)
+    external;
 }

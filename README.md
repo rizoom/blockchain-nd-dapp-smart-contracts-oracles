@@ -2,6 +2,10 @@
 
 FlightSurety is a sample application project for Udacity's Blockchain course.
 
+## TRIZZI TODO NOTES
+- migration > authorize caller + register first airline
+- look video : accept call only from contract (sep. of concerns)
+
 ## Install
 
 This repository contains Smart Contract code in Solidity (using Truffle), tests (also using Truffle), dApp scaffolding (using HTML, CSS and JS) and server app scaffolding.

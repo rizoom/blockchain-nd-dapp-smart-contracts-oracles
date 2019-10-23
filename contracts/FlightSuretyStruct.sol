@@ -7,10 +7,10 @@ library FlightSuretyStruct {
     /*                                       SHARED STRUCT                                      */
     /********************************************************************************************/
     struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;
+        string name;
         address airline;
+        uint256 timestamp;
+        uint8 statusCode;
     }
 
     struct Airline {

@@ -28,6 +28,9 @@ contract FlightSuretyApp {
     // Airline funding fee
     uint256 private constant AIRLINE_FUNDING_FEE = 10 ether;
 
+    // Max amount a passenger can pay for an insurance
+    uint256 private constant INSURANCE_MAX_AMOUNT = 1 ether;
+
     // Multiparty consensus
     uint8 private MAX_AIRLINES_WITHOUT_CONSENSUS = 4;
 
@@ -111,8 +114,7 @@ contract FlightSuretyApp {
 
 
     /**
-     * @dev Add an airline to the registration queue
-     *
+     * @dev Register an airline, using multiparty consensus when necessary
      */
     function registerAirline
     (
@@ -162,6 +164,7 @@ contract FlightSuretyApp {
     function fundAirline(address airlineAddress)
     external
     payable
+    requireIsOperational
     requireAirline
     {
         require(flightSuretyData.isAirlineFunded(airlineAddress) == false, "Airline already registered");
@@ -170,21 +173,24 @@ contract FlightSuretyApp {
         flightSuretyData.fundAirline.value(msg.value)(airlineAddress);
     }
 
-
     /**
-     * @dev Register a future flight for insuring.
-     *
+     * @dev (Passenger) Purchase an insurance
      */
-    /*
-    function registerFlight
+    function purchaseInsurance
     (
+        address airline,
+        string flight,
+        uint256 timestamp
     )
     external
-    pure
+    payable
+    requireIsOperational
     {
+        require(msg.value > 0, "Purchase amount cannot be 0");
+        require(msg.value <= INSURANCE_MAX_AMOUNT, "1 ether is the maximum for purchasing insurance");
 
+        flightSuretyData.purchaseInsurance.value(msg.value)(msg.sender, airline, flight, timestamp);
     }
-    */
 
     /**
      * @dev Called after oracle has updated flight status
@@ -193,13 +199,33 @@ contract FlightSuretyApp {
     function processFlightStatus
     (
         address airline,
-        string memory flight,
+        string flight,
         uint256 timestamp,
         uint8 statusCode
     )
     internal
-    pure
+    requireIsOperational
     {
+        if (statusCode == STATUS_CODE_LATE_AIRLINE) {
+            flightSuretyData.creditInsurees(airline, flight, timestamp);
+        }
+    }
+
+    /**
+     * @dev Admin function to manually process flight status as contract owner
+     */
+    function processFlightStatusAsOwner
+    (
+        address airline,
+        string flight,
+        uint256 timestamp,
+        uint8 statusCode
+    )
+    external
+    requireIsOperational
+    requireContractOwner
+    {
+        processFlightStatus(airline, flight, timestamp, statusCode);
     }
 
 
@@ -409,4 +435,10 @@ contract FlightSuretyData {
 
     function addAirlineVote(address airlineAddress, address votingAddress)
     external;
+
+    function purchaseInsurance(address passenger, address airline, string flight, uint256 timestamp)
+    external payable;
+
+    function creditInsurees(address airline, string flight, uint256 timestamp)
+    external view;
 }

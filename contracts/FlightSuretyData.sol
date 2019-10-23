@@ -14,7 +14,12 @@ contract FlightSuretyData {
     mapping(address => bool) private authorizedContracts; // External contracts authorized to make state changes
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
 
+    // TOOD unused
     mapping(bytes32 => FlightSuretyStruct.Flight) private flights;
+
+    mapping(bytes32 => address[]) private insuredPassengers;
+    mapping(bytes32 => mapping(address => uint256)) private insurancePurchases;
+    mapping(address => uint256) private passengerBalances;
 
     uint256 public airlineCount;
     mapping(address => FlightSuretyStruct.Airline) private airlines;
@@ -203,16 +208,37 @@ contract FlightSuretyData {
 
     /**
      * @dev Buy insurance for a flight
-     *
      */
-    function buy
+    function purchaseInsurance
     (
+        address passenger,
+        address airline,
+        string flight,
+        uint256 timestamp
     )
     external
     payable
+    requireIsOperational
     isCallerAuthorized
     {
+        bytes32 key = getFlightKey(airline, flight, timestamp);
+        // TODO require cannot repurchase insurance + test?? ...
+        insurancePurchases[key][passenger] = msg.value;
+        insuredPassengers[key].push(passenger);
+    }
 
+    function getInsurancePurchaseAmount(
+        address passenger,
+        address airline,
+        string flight,
+        uint256 timestamp
+    )
+    external
+    view
+    returns (uint256)
+    {
+        bytes32 key = getFlightKey(airline, flight, timestamp);
+        return insurancePurchases[key][passenger];
     }
 
     /**
@@ -220,11 +246,37 @@ contract FlightSuretyData {
     */
     function creditInsurees
     (
+        address airline,
+        string flight,
+        uint256 timestamp
+    )
+    external
+    requireIsOperational
+    isCallerAuthorized
+    {
+        bytes32 key = getFlightKey(airline, flight, timestamp);
+        address[] memory insurees = insuredPassengers[key];
+
+        // loop on insurees for this flight
+        // reset the amount of the insurance purchased for this passenger
+        // add 1.5X the paid amount to passenger balance
+        for (uint8 i = 0; i < insurees.length; i++) {
+            address insuree = insurees[i];
+            uint256 purchase = insurancePurchases[key][insuree];
+
+            delete insurancePurchases[key][insuree];
+            passengerBalances[insuree] = passengerBalances[insuree].add(purchase.mul(3).div(2));
+        }
+    }
+
+    function getPassengerBalance(
+        address passenger
     )
     external
     view
-    isCallerAuthorized
+    returns (uint256)
     {
+        return passengerBalances[passenger];
     }
 
 
@@ -237,6 +289,7 @@ contract FlightSuretyData {
     )
     external
     view
+    requireIsOperational
     isCallerAuthorized
     {
     }
@@ -251,6 +304,7 @@ contract FlightSuretyData {
     )
     public
     payable
+    requireIsOperational
     isCallerAuthorized
     {
     }
@@ -258,7 +312,7 @@ contract FlightSuretyData {
     function getFlightKey
     (
         address airline,
-        string memory flight,
+        string flight,
         uint256 timestamp
     )
     pure

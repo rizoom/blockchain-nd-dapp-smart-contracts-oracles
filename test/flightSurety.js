@@ -1,5 +1,7 @@
-var Test = require("../config/testConfig.js");
-var BigNumber = require("bignumber.js");
+const Test = require("../config/testConfig.js");
+const BN = web3.utils.toBN;
+
+const STATUS_CODE_LATE_AIRLINE = 20;
 
 contract("Flight Surety Tests", async accounts => {
   var config;
@@ -129,7 +131,7 @@ contract("Flight Surety Tests", async accounts => {
     try {
       await config.flightSuretyApp.fundAirline(unfundedAirline, {
         from: unfundedAirline,
-        value: web3.utils.toWei("10", "ether").minus(1) // 10 ethers minus 1 wei.
+        value: BN(web3.utils.toWei("10", "ether")).sub(BN(1)) // 10 ethers minus 1 wei.
       });
     } catch (e) {}
 
@@ -159,7 +161,7 @@ contract("Flight Surety Tests", async accounts => {
     });
     await config.flightSuretyApp.fundAirline(newAirline1, {
       from: newAirline1,
-      value: web3.utils.toWei("10", "ether") // 10 ethers this time
+      value: web3.utils.toWei("10", "ether")
     });
 
     await config.flightSuretyApp.registerAirline(newAirline2, "4th Test Airline", {
@@ -167,7 +169,7 @@ contract("Flight Surety Tests", async accounts => {
     });
     await config.flightSuretyApp.fundAirline(newAirline2, {
       from: newAirline2,
-      value: web3.utils.toWei("10", "ether") // 10 ethers this time
+      value: web3.utils.toWei("10", "ether")
     });
 
     // ASSERT
@@ -226,11 +228,99 @@ contract("Flight Surety Tests", async accounts => {
     });
 
     // ASSERT
-    let isAirline = await config.flightSuretyData.isAirline.call(newAirline);
-    let votes = await config.flightSuretyData.getAirlineVotes.call(newAirline);
+    const isAirline = await config.flightSuretyData.isAirline.call(newAirline);
+    const votes = await config.flightSuretyData.getAirlineVotes.call(newAirline);
     const airlineCount = await config.flightSuretyData.airlineCount.call();
     assert.equal(isAirline, true, "Airline not registered");
     assert.equal(votes.length, 3, "Expected 3 votes");
     assert.equal(airlineCount, 6, "Expected 6 airlines to be registered at that point");
+  });
+
+  it("(passenger) can purchase an insurance", async () => {
+    // ARRANGE
+    const passenger = accounts[10];
+    const airline = config.firstAirline.address;
+    const flight = "CGD -> JFK";
+    const timestamp = 1572562800000;
+    const value = web3.utils.toWei("1", "ether");
+
+    // ACT
+    await config.flightSuretyApp.purchaseInsurance(airline, flight, timestamp, {
+      from: passenger,
+      value: value
+    });
+
+    // ASSERT
+    const purchaseAmount = await config.flightSuretyData.getInsurancePurchaseAmount.call(
+      passenger,
+      airline,
+      flight,
+      timestamp
+    );
+    assert.equal(purchaseAmount, value, "Expected 1 as purchase amount");
+  });
+
+  it("(passenger) cannot purchase an insurance with more than one ether", async () => {
+    // ARRANGE
+    const passenger = accounts[11];
+    const airline = config.firstAirline.address;
+    const flight = "CGD -> JFK";
+    const timestamp = 1572562800000;
+    const value = BN(web3.utils.toWei("1", "ether")).add(BN(1)); // 1 ether plus one wei.
+
+    // ACT
+    let reverted = false;
+    try {
+      await config.flightSuretyApp.purchaseInsurance(airline, flight, timestamp, {
+        from: passenger,
+        value: value
+      });
+    } catch (e) {
+      reverted = true;
+    }
+
+    // ASSERT
+    assert.equal(reverted, true, "Shouldn't purchase an insurance");
+  });
+
+  it("(passenger) can credit insurees", async () => {
+    // ARRANGE
+    const passenger1 = accounts[10]; // already subscribed 1 ether
+    const passenger2 = accounts[11];
+    const purchaseValuePassenger2 = web3.utils.toWei("0.5", "ether");
+
+    const airline = config.firstAirline.address;
+    const flight = "CGD -> JFK";
+    const timestamp = 1572562800000;
+
+    // ACT
+    await config.flightSuretyApp.purchaseInsurance(airline, flight, timestamp, {
+      from: passenger2,
+      value: purchaseValuePassenger2
+    });
+
+    await config.flightSuretyApp.processFlightStatusAsOwner(airline, flight, timestamp, STATUS_CODE_LATE_AIRLINE);
+
+    // ASSERT
+    const balancePassenger1 = await config.flightSuretyData.getPassengerBalance.call(passenger1);
+    const balancePassenger2 = await config.flightSuretyData.getPassengerBalance.call(passenger2);
+    assert.equal(balancePassenger1, web3.utils.toWei("1.5", "ether"), "Passenger 1 should be credited 1.5 ether");
+    assert.equal(balancePassenger2, web3.utils.toWei("0.75", "ether"), "Passenger 2 should be credited 0.75 ether");
+
+    // insurance purchase should be reset
+    const purchasePassenger1 = await config.flightSuretyData.getInsurancePurchaseAmount.call(
+      passenger1,
+      airline,
+      flight,
+      timestamp
+    );
+    const purchasePassenger2 = await config.flightSuretyData.getInsurancePurchaseAmount.call(
+      passenger2,
+      airline,
+      flight,
+      timestamp
+    );
+    assert.equal(purchasePassenger1, 0, "Expected 0 : insurance purchase should be reset");
+    assert.equal(purchasePassenger2, 0, "Expected 0 : insurance purchase should be reset");
   });
 });

@@ -228,6 +228,17 @@ contract FlightSuretyApp {
         processFlightStatus(airline, flight, timestamp, statusCode);
     }
 
+    function pay
+    (
+        address passenger
+    )
+    external
+    requireIsOperational
+    {
+        require(msg.sender == passenger, "Only the passenger can request a withdrawal");
+
+        flightSuretyData.pay(passenger);
+    }
 
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus
@@ -440,5 +451,8 @@ contract FlightSuretyData {
     external payable;
 
     function creditInsurees(address airline, string flight, uint256 timestamp)
-    external view;
+    external;
+
+    function pay(address passenger)
+    external;
 }

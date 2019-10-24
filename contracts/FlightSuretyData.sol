@@ -282,31 +282,18 @@ contract FlightSuretyData {
 
     /**
      *  @dev Transfers eligible payout funds to insuree
-     *
     */
     function pay
     (
+        address passenger
     )
     external
-    view
     requireIsOperational
     isCallerAuthorized
     {
-    }
+        require(passengerBalances[passenger] > 0, "Passenger balance should be positive");
 
-    /**
-     * @dev Initial funding for the insurance. Unless there are too many delayed flights
-     *      resulting in insurance payouts, the contract should be self-sustaining
-     *
-     */
-    function fund
-    (
-    )
-    public
-    payable
-    requireIsOperational
-    isCallerAuthorized
-    {
+        passenger.transfer(passengerBalances[passenger]);
     }
 
     function getFlightKey
@@ -320,18 +307,6 @@ contract FlightSuretyData {
     returns (bytes32)
     {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
-    }
-
-    /**
-    * @dev Fallback function for funding smart contract.
-    *
-    */
-    function()
-    external
-    payable
-    isCallerAuthorized
-    {
-        fund();
     }
 }
 

@@ -323,4 +323,35 @@ contract("Flight Surety Tests", async accounts => {
     assert.equal(purchasePassenger1, 0, "Expected 0 : insurance purchase should be reset");
     assert.equal(purchasePassenger2, 0, "Expected 0 : insurance purchase should be reset");
   });
+
+  it("(passenger) can withdraw any funds owed to them as a result of receiving credit for insurance payout", async () => {
+    // ARRANGE
+    const passenger1 = accounts[10];
+    const previousBalance = await web3.eth.getBalance(passenger1);
+
+    // ACT
+    const result = await config.flightSuretyApp.pay(passenger1, {
+      from: passenger1
+    });
+
+    // ASSERT
+
+    // calculate gas cost of the "pay" function
+    // which will be required to retrieve amount received by passenger 1
+    const tx = await web3.eth.getTransaction(result.tx);
+    const gasPrice = tx.gasPrice;
+    const gasUsed = result.receipt.gasUsed;
+    const gasCost = BN(gasPrice).muln(gasUsed);
+
+    const actualBalance = await web3.eth.getBalance(passenger1);
+    // received amount = (actual balance + gas cost) - previous balance
+    const received = BN(actualBalance).add(gasCost).sub(BN(previousBalance));
+
+    assert.equal(
+      web3.utils.fromWei(received),
+      1.5,
+      "Passenger should have received 1.5 ether"
+    );
+  });
 });
+

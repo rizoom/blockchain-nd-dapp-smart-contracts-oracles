@@ -33,7 +33,10 @@ let accounts;
   const registrationPromises = accounts
     .slice(ORACLE_ACCOUNTS_START_INDEX, ORACLE_ACCOUNTS_END_INDEX)
     .map(registerOracleWithFee);
+
+  console.log("Oracles registration in progress, please wait...");
   await Promise.all(registrationPromises);
+  console.log("Oracles registration is finished.");
 })();
 
 function registerOracle(account, fee) {

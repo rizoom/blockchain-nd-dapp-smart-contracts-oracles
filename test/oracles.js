@@ -31,7 +31,6 @@ contract("Oracles", async accounts => {
       await config.flightSuretyApp.registerOracle({ from: accounts[a], value: fee });
       let result = await config.flightSuretyApp.getMyIndexes.call({ from: accounts[a] });
       console.log(`Oracle Registered: ${result[0]}, ${result[1]}, ${result[2]}`);
-      console.log("Result", result);
     }
   });
 

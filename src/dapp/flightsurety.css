@@ -29,6 +29,10 @@ section {
     text-align: right;
 }
 
+span.field {
+    margin-right: 20px;
+}
+
 .field-value {
     color: #0e7fa8;
 }
@@ -37,6 +41,6 @@ label.form {
     font-size: 14px;
     margin-right: 20px;
 }
-input {
+input, select {
     margin-right: 30px;
 }

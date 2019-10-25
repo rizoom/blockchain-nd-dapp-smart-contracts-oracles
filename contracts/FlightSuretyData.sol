@@ -219,7 +219,8 @@ contract FlightSuretyData {
     isCallerAuthorized
     {
         bytes32 key = getFlightKey(airline, flight, timestamp);
-        // TODO require cannot repurchase insurance + test?? ...
+        require(insurancePurchases[key][passenger] == 0, "cannot repurchase insurance");
+
         insurancePurchases[key][passenger] = msg.value;
         insuredPassengers[key].push(passenger);
     }

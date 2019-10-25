@@ -9,7 +9,7 @@ web3.eth.defaultAccount = web3.eth.accounts[0];
 const flightSuretyApp = new web3.eth.Contract(FlightSuretyApp.abi, config.appAddress);
 
 const GAS_LIMIT = 4500000;
-const ORACLES_COUNT = 25;
+const ORACLES_COUNT = 60;
 const ORACLE_ACCOUNTS_START_INDEX = 20;
 const ORACLE_ACCOUNTS_END_INDEX = ORACLE_ACCOUNTS_START_INDEX + ORACLES_COUNT;
 
@@ -48,6 +48,7 @@ function registerOracle(account, fee) {
     });
 }
 
+// Watch OracleRequest
 flightSuretyApp.events.OracleRequest(
   {
     fromBlock: 0
@@ -68,16 +69,6 @@ function handleOracleRequest(event) {
       const statusCode = getRandomStatusCode();
       console.log(
         `OracleRequest event applies to oracle with account ${address} and indexes ${indexes}\n\tRandom status code : ${statusCode}`
-      );
-
-      console.log(
-        "index, airline, flight, timestamp, statusCode",
-        index,
-        airline,
-        flight,
-        timestamp,
-        statusCode,
-        typeof statusCode
       );
 
       flightSuretyApp.methods

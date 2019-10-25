@@ -365,6 +365,8 @@ contract FlightSuretyApp {
         // oracles respond with the *** same *** information
         emit OracleReport(airline, flight, timestamp, statusCode);
         if (oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES) {
+            // delete oracle response to avoid processing further responses
+            delete oracleResponses[key];
 
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 

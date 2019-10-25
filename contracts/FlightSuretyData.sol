@@ -14,9 +14,6 @@ contract FlightSuretyData {
     mapping(address => bool) private authorizedContracts; // External contracts authorized to make state changes
     bool private operational = true;                                    // Blocks all state changes throughout the contract if false
 
-    // TOOD unused
-    mapping(bytes32 => FlightSuretyStruct.Flight) private flights;
-
     mapping(bytes32 => address[]) private insuredPassengers;
     mapping(bytes32 => mapping(address => uint256)) private insurancePurchases;
     mapping(address => uint256) private passengerBalances;
